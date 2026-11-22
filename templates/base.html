@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Fearless Draft Lab{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <header class="topbar">
+    <a class="brand" href="{% url 'planner:home' %}">Fearless <span>Draft Lab</span></a>
+    <nav>
+      <a href="{% url 'planner:scouting' %}" class="{% if request.resolver_match.url_name == 'scouting' %}active{% endif %}">Scouting</a>
+      <a href="{% url 'planner:plans' %}" class="{% if request.resolver_match.url_name in 'plans board' %}active{% endif %}">Series plans</a>
+      <a href="/api/">API</a>
+    </nav>
+  </header>
+  {% if has_synthetic %}
+  <div class="banner">Synthetic demo data is loaded. Teams are real names, but the drafts are generated. Replace it with GRID data before drawing real conclusions.</div>
+  {% endif %}
+  {% if messages %}<div class="messages">{% for m in messages %}<div class="msg">{{ m }}</div>{% endfor %}</div>{% endif %}
+  <main class="{% block main_class %}container{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

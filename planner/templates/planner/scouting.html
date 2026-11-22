@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Scouting · Fearless Draft Lab{% endblock %}
+{% block content %}
+<h1>Opponent scouting</h1>
+<form class="card form-row" style="margin-bottom:16px" hx-get="{% url 'planner:scouting' %}" hx-target="#report" hx-push-url="true" hx-trigger="change, submit">
+  <div><label for="team">Team</label>
+    <select name="team" id="team"><option value="">Choose a team…</option>
+      {% for t in teams %}<option value="{{ t.id }}" {% if team and team.id == t.id %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+    </select></div>
+  <div><label for="patch">Patch</label>
+    <select name="patch" id="patch"><option value="">All patches</option>
+      {% for p in patches %}<option {% if q.patch == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+    </select></div>
+  <div><label for="from">From</label><input type="date" name="from" id="from" value="{{ q.from }}"></div>
+  <div><label for="to">To</label><input type="date" name="to" id="to" value="{{ q.to }}"></div>
+</form>
+<div id="report">{% include "planner/_scouting_report.html" %}</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% load draft_extras %}
+<nav class="tabs">
+  {% for g in games %}
+  <a href="{% url 'planner:board' plan.id g.number %}" class="{% if g.number == st.game.number %}active{% endif %}">
+    Game {{ g.number }}{% if g.result %} <span class="res-{{ g.result }}">{{ g.result|upper|slice:":1" }}</span>{% endif %}
+  </a>
+  {% endfor %}
+  {% if locked_count %}<span class="tag warn" style="align-self:center">{{ locked_count }} champions Fearless-locked this game</span>{% endif %}
+</nav>
+
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+{% if conflicts %}
+<div class="warnbox">Planned picks now Fearless-locked by an earlier game:
+  {% for c in conflicts %}G{{ c.game }} {{ c.champion }}{% if not forloop.last %}, {% endif %}{% endfor %}. Undo them in that game.</div>
+{% endif %}
+
+<div class="board">
+  {# ---------- Blue side ---------- #}
+  <section class="side blue">
+    <h2>{{ blue.short_code }} <span class="tag blue">{% if blue_is_us %}You{% else %}Opponent{% endif %} · Blue</span></h2>
+    <div class="bans">{% for s in slots.blue_bans %}
+      <div class="slot {% if s.action %}filled{% endif %} {% if s.current %}current{% endif %}" title="{{ s.step.label }}">{% if s.action %}{% include "planner/_champ.html" with c=s.action.champion %}{% else %}B{{ forloop.counter }}{% endif %}</div>
+    {% endfor %}</div>
+    {% for s in slots.blue_picks %}
+    <div class="slot {% if s.action %}filled{% endif %} {% if s.current %}current{% endif %}">
+      {% if s.action %}{% include "planner/_champ.html" with c=s.action.champion %}<span>{{ s.action.champion.name }}{% if s.action.role %} <span class="tag">{{ s.action.role }}</span>{% endif %}</span>
+      {% else %}{{ s.step.label }}{% endif %}
+    </div>
+    {% endfor %}
+    <p class="steps-hint">Open roles: {% if blue_is_us %}{{ open_roles_us|join:", " }}{% else %}{{ open_roles_them|join:", " }}{% endif %}</p>
+  </section>
+
+  {# ---------- Centre ---------- #}
+  <section class="center">
+    <div class="turn">
+      {% if st.next_step %}
+        <div>Step {{ st.next_step.order }}/20 · <strong class="{{ st.next_step.side }}">{{ st.next_step.label }}</strong>
+          · {% if acting_is_us %}<b>your</b> turn{% else %}predicting <b>{{ plan.opponent.short_code }}</b>{% endif %}</div>
+      {% else %}
+        <div><strong>Draft complete.</strong> Set the result below, then move to the next game.</div>
+      {% endif %}
+      <div>
+        {% if st.next_step and st.next_step.action == "pick" %}
+        <label style="display:inline" for="role-select">Role</label>
+        <select id="role-select" name="role"><option value="">auto</option>{% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}</select>
+        {% endif %}
+        <button hx-post="{% url 'planner:board_undo' plan.id st.game.number %}" hx-target="#board" {% if not st.actions %}disabled{% endif %}>Undo</button>
+        <button class="danger" hx-post="{% url 'planner:board_reset' plan.id st.game.number %}" hx-target="#board" hx-confirm="Clear this game's draft?" {% if not st.actions %}disabled{% endif %}>Reset</button>
+      </div>
+    </div>
+
+    {% if suggest.suggestions %}
+    <h3>{% if suggest.predicted %}Likely {{ plan.opponent.short_code }} {{ st.next_step.action }}s{% else %}Suggested {{ st.next_step.action }}s{% endif %}</h3>
+    <div class="suggest">
+      {% for s in suggest.suggestions %}
+      <button class="sugg" hx-post="{% url 'planner:board_act' plan.id st.game.number %}" hx-vals='{"champion": "{{ s.champion.id }}"}' hx-include="#role-select" hx-target="#board">
+        {% include "planner/_champ.html" with c=s.champion lg=True %}
+        <div><b>{{ s.champion.name }}</b><ul>{% for r in s.reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% for n in suggest.notes %}<p class="small muted">{{ n }}</p>{% endfor %}
+
+    {% if st.next_step %}
+    <div class="filters">
+      <input id="champ-search" type="search" placeholder="Search champion…" oninput="window.draftFilter.q=this.value.toLowerCase();applyFilter()">
+      <button type="button" data-role-btn="all" onclick="window.draftFilter.role='all';applyFilter()">All</button>
+      <button type="button" data-role-btn="available" onclick="window.draftFilter.role='available';applyFilter()">Available</button>
+      {% for r in roles %}<button type="button" data-role-btn="{{ r }}" onclick="window.draftFilter.role='{{ r }}';applyFilter()">{{ r }}</button>{% endfor %}
+    </div>
+    <div id="champ-grid" class="champ-grid">
+      {% for t in grid %}
+      <button class="tile {{ t.status }}" data-name="{{ t.c.name|lower }}" data-roles="{{ t.c.roles|join:' ' }}" data-status="{{ t.status }}"
+        {% if t.status == "ok" or t.status == "wasted" %}hx-post="{% url 'planner:board_act' plan.id st.game.number %}" hx-vals='{"champion": "{{ t.c.id }}"}' hx-include="#role-select" hx-target="#board"{% else %}disabled{% endif %}
+        title="{{ t.c.name }}{% if t.status == 'locked' %} (Fearless-locked){% elif t.status == 'wasted' %} (already locked for the opponent: wasted ban){% elif t.status == 'taken' %} (picked/banned this game){% endif %}">
+        {% include "planner/_champ.html" with c=t.c %}
+        <span>{{ t.c.name }}</span>
+        {% if t.locked_us or t.locked_them %}<span class="lockdot">{% if t.locked_us and t.locked_them %}locked{% elif t.locked_us %}locked: you{% else %}locked: opp{% endif %}</span>{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  {# ---------- Red side ---------- #}
+  <section class="side red">
+    <h2>{{ red.short_code }} <span class="tag red">{% if blue_is_us %}Opponent{% else %}You{% endif %} · Red</span></h2>
+    <div class="bans">{% for s in slots.red_bans %}
+      <div class="slot {% if s.action %}filled{% endif %} {% if s.current %}current{% endif %}" title="{{ s.step.label }}">{% if s.action %}{% include "planner/_champ.html" with c=s.action.champion %}{% else %}B{{ forloop.counter }}{% endif %}</div>
+    {% endfor %}</div>
+    {% for s in slots.red_picks %}
+    <div class="slot {% if s.action %}filled{% endif %} {% if s.current %}current{% endif %}">
+      {% if s.action %}{% include "planner/_champ.html" with c=s.action.champion %}<span>{{ s.action.champion.name }}{% if s.action.role %} <span class="tag">{{ s.action.role }}</span>{% endif %}</span>
+      {% else %}{{ s.step.label }}{% endif %}
+    </div>
+    {% endfor %}
+    <p class="steps-hint">Open roles: {% if blue_is_us %}{{ open_roles_them|join:", " }}{% else %}{{ open_roles_us|join:", " }}{% endif %}</p>
+  </section>
+</div>
+
+<form class="card form-row" style="margin-top:14px" hx-post="{% url 'planner:game_settings' plan.id st.game.number %}" hx-target="#board">
+  <div><label for="our_side">Your side in G{{ st.game.number }}</label>
+    <select name="our_side" id="our_side" {% if st.actions %}disabled title="Clear the draft to switch sides"{% endif %}>
+      <option value="blue" {% if st.game.our_side == "blue" %}selected{% endif %}>Blue</option>
+      <option value="red" {% if st.game.our_side == "red" %}selected{% endif %}>Red</option>
+    </select></div>
+  <div><label for="result">Result</label>
+    <select name="result" id="result">
+      <option value="" {% if not st.game.result %}selected{% endif %}>Not played</option>
+      <option value="win" {% if st.game.result == "win" %}selected{% endif %}>Win</option>
+      <option value="loss" {% if st.game.result == "loss" %}selected{% endif %}>Loss</option>
+    </select></div>
+  <div style="flex:1"><label for="notes">Game notes</label><textarea name="notes" id="notes" rows="2" style="width:100%">{{ st.game.notes }}</textarea></div>
+  <div><button type="submit">Save game</button></div>
+</form>

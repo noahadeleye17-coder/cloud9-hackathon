@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Fearless Draft Lab</h1>
+<p class="muted">Scout an opponent's drafting habits, then plan a full Fearless series: lockouts tracked, pools shown per role, and every suggestion explained.</p>
+
+<div class="grid cols-3" style="margin:20px 0">
+  <div class="card"><div class="stat">{{ teams }}</div><div class="muted">teams</div></div>
+  <div class="card"><div class="stat">{{ games }}</div><div class="muted">pro games with drafts</div></div>
+  <div class="card"><div class="stat">{{ plans|length }}</div><div class="muted">recent series plans</div></div>
+</div>
+
+{% if not games %}
+<div class="warnbox">No match data yet. Run <code>python manage.py seed_demo</code> for synthetic demo data, or import GRID data.</div>
+{% endif %}
+
+<div class="grid cols-2">
+  <div class="card">
+    <h2>1. Scout the opponent</h2>
+    <p class="muted">Most-picked and most-banned champions (measured against when they were actually available), first-pick habits, picks by role, and how their picks change in Fearless Games 3–5.</p>
+    <a class="btn primary" href="{% url 'planner:scouting' %}">Open scouting</a>
+  </div>
+  <div class="card">
+    <h2>2. Plan the series</h2>
+    <p class="muted">Run every pick/ban in pro order. Champions used earlier in the series lock automatically. Export the plan for match day.</p>
+    <a class="btn primary" href="{% url 'planner:plans' %}">Series plans</a>
+  </div>
+</div>
+
+{% if plans %}
+<div class="card" style="margin-top:16px">
+  <h2>Recent plans</h2>
+  <table>
+    {% for p in plans %}
+    <tr><td><a href="{% url 'planner:board' p.id 1 %}">{{ p.name }}</a></td><td>{{ p.our_team.short_code }} vs {{ p.opponent.short_code }}</td><td>{{ p.get_format_display }}</td><td class="muted">{{ p.updated_at|timesince }} ago</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ plan.name }} · G{{ st.game.number }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<div class="form-row" style="justify-content:space-between;margin-bottom:10px">
+  <div><h1 style="margin:0">{{ plan.name }}</h1>
+    <div class="muted">{{ plan.our_team.name }} vs {{ plan.opponent.name }} · {{ plan.get_format_display }} · {{ plan.get_fearless_mode_display }}{% if plan.scout_patch %} · suggestions from patch {{ plan.scout_patch }}{% endif %}</div></div>
+  <div><a class="btn" href="{% url 'planner:plan_export' plan.id %}">Export plan (.md)</a> <a class="btn" href="/api/draft-plans/{{ plan.id }}/export/">JSON</a></div>
+</div>
+<div id="board" class="board-wrap">{% include "planner/_board.html" %}</div>
+<script>
+  // Client-side champion grid filter (role + search). Re-applied after every HTMX swap.
+  window.draftFilter = { role: "all", q: "" };
+  function applyFilter() {
+    const f = window.draftFilter;
+    document.querySelectorAll("#champ-grid .tile").forEach(t => {
+      const roles = t.dataset.roles.split(" ");
+      const okRole = f.role === "all" || roles.includes(f.role) || (f.role === "available" && t.dataset.status === "ok");
+      const okQ = !f.q || t.dataset.name.includes(f.q);
+      t.hidden = !(okRole && okQ);
+    });
+    document.querySelectorAll("[data-role-btn]").forEach(b => b.classList.toggle("on", b.dataset.roleBtn === f.role));
+    const s = document.getElementById("champ-search"); if (s && s.value !== f.q) s.value = f.q;
+  }
+  document.addEventListener("htmx:afterSwap", applyFilter);
+  document.addEventListener("DOMContentLoaded", applyFilter);
+</script>
+{% endblock %}

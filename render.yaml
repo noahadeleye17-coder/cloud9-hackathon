@@ -1,0 +1,26 @@
+databases:
+  - name: draftlab-db
+    plan: free
+    databaseName: draftlab
+    user: draftlab
+
+services:
+  - type: web
+    name: fearless-draft-lab
+    runtime: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: draftlab-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "0"
+      - key: WEB_CONCURRENCY
+        value: "2"

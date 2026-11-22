@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Series plans · Fearless Draft Lab{% endblock %}
+{% block content %}
+<h1>Series plans</h1>
+<div class="grid cols-2">
+  <form method="post" class="card">
+    {% csrf_token %}
+    <h2>New series plan</h2>
+    {{ form.non_field_errors }}
+    <div class="form-row">
+      {% for f in form %}
+        <div {% if f.name == 'notes' or f.name == 'name' %}style="flex:1 1 100%"{% endif %}>
+          <label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{{ f.errors }}
+        </div>
+      {% endfor %}
+    </div>
+    <p><button class="primary" type="submit">Create and start Game 1</button></p>
+  </form>
+  <div class="card">
+    <h2>Saved plans</h2>
+    <table>
+      {% for p in plans %}
+      <tr>
+        <td><a href="{% url 'planner:board' p.id 1 %}">{{ p.name }}</a><div class="small muted">{{ p.our_team.short_code }} vs {{ p.opponent.short_code }} · {{ p.get_format_display }} · {{ p.get_fearless_mode_display }}</div></td>
+        <td><a class="btn" href="{% url 'planner:plan_export' p.id %}">Export</a></td>
+        <td><form method="post" action="{% url 'planner:plan_delete' p.id %}" onsubmit="return confirm('Delete this plan?')">{% csrf_token %}<button class="danger" type="submit">Delete</button></form></td>
+      </tr>
+      {% empty %}<tr><td class="muted">No plans yet.</td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

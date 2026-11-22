@@ -1,0 +1,77 @@
+{% load draft_extras %}
+{% if not report %}
+  <p class="muted">Pick a team to see their drafting tendencies.</p>
+{% elif not report.games %}
+  <div class="warnbox">No games for {{ team.name }} with these filters.</div>
+{% else %}
+<div class="grid cols-3" style="margin-bottom:16px">
+  <div class="card"><div class="stat">{{ report.games }}</div><div class="muted">games across {{ report.series }} series</div></div>
+  <div class="card"><div class="stat">{{ report.record.blue|winrate }}</div><div class="muted">blue side (W-L)</div></div>
+  <div class="card"><div class="stat">{{ report.record.red|winrate }}</div><div class="muted">red side (W-L)</div></div>
+</div>
+
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Most picked</h2>
+    <p class="small muted">Rate = picks ÷ games where it was available to them (not banned, not taken by the opponent, not Fearless-locked).</p>
+    <table>
+      <tr><th>Champion</th><th class="num">Picks</th><th class="num">Avail.</th><th>Rate</th><th class="num">P1</th><th>Roles</th></tr>
+      {% for row in report.picks %}
+      <tr>
+        <td><span class="champ">{% include "planner/_champ.html" with c=row.champion %}{{ row.champion.name }}</span></td>
+        <td class="num">{{ row.count }}</td><td class="num">{{ row.opportunities }}</td>
+        <td><div class="bar"><i style="width:{% widthratio row.rate 1 100 %}%"></i></div><span class="small">{{ row.rate|pct }}</span></td>
+        <td class="num" title="Picked in the first pick phase">{{ row.phase1 }}</td>
+        <td>{% for r, n in row.roles.items %}<span class="tag">{{ r }} {{ n }}</span> {% endfor %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div class="card">
+    <h2>Most banned</h2>
+    <p class="small muted">Rate = bans ÷ games where the opponent could still pick it. Phase 1 = first three bans, Phase 2 = last two.</p>
+    <table>
+      <tr><th>Champion</th><th class="num">Bans</th><th>Rate</th><th class="num">Ph1</th><th class="num">Ph2</th></tr>
+      {% for row in report.bans %}
+      <tr>
+        <td><span class="champ">{% include "planner/_champ.html" with c=row.champion %}{{ row.champion.name }}</span></td>
+        <td class="num">{{ row.count }}</td>
+        <td><div class="bar"><i style="width:{% widthratio row.rate 1 100 %}%"></i></div><span class="small">{{ row.rate|pct }}</span></td>
+        <td class="num">{{ row.phase1 }}</td><td class="num">{{ row.phase2 }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<div class="grid cols-2" style="margin-top:16px">
+  <div class="card">
+    <h2>First-pick habits</h2>
+    <h3>Blue side B1 pick ({{ report.blue_first_pick.games }} blue games)</h3>
+    <p>{% for row in report.blue_first_pick.champions %}<span class="champ" style="margin:0 10px 6px 0">{% include "planner/_champ.html" with c=row.champion %}{{ row.champion.name }} <span class="tag">{{ row.count }}</span></span>{% empty %}<span class="muted">-</span>{% endfor %}</p>
+    <h3>Red side R1–R2 picks ({{ report.red_first_rotation.games }} red games)</h3>
+    <p>{% for row in report.red_first_rotation.champions %}<span class="champ" style="margin:0 10px 6px 0">{% include "planner/_champ.html" with c=row.champion %}{{ row.champion.name }} <span class="tag">{{ row.count }}</span></span>{% empty %}<span class="muted">-</span>{% endfor %}</p>
+  </div>
+  <div class="card">
+    <h2>Picks by role</h2>
+    <table>
+      {% for role, rows in report.by_role.items %}
+      <tr><th style="width:80px">{{ role }}</th><td>{% for row in rows %}<span class="champ" style="margin:2px 10px 2px 0">{% include "planner/_champ.html" with c=row.champion %}{{ row.champion.name }} <span class="tag">{{ row.count }}</span></span>{% empty %}<span class="muted">-</span>{% endfor %}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h2>How their picks change through a Fearless series</h2>
+  <p class="small muted">Top picks by game number. Late games often show pocket picks, once comfort champions are locked out. Watch the sample size (games).</p>
+  <div class="grid cols-3">
+    {% for number, bucket in report.by_game_number.items %}
+    <div>
+      <h3>Game {{ number }} <span class="tag">{{ bucket.games }} games</span></h3>
+      {% for row in bucket.picks %}<div class="champ" style="margin-bottom:4px">{% include "planner/_champ.html" with c=row.champion %}{{ row.champion.name }} <span class="tag">{{ row.count }}</span></div>{% empty %}<span class="muted">-</span>{% endfor %}
+    </div>
+    {% empty %}<p class="muted">No Fearless series in this range.</p>{% endfor %}
+  </div>
+</div>
+{% endif %}

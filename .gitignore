@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+staticfiles/
+.env
+*.log
+
+# JetBrains: commit the project config (.idea) for the hackathon, but not per-user state.
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/shelf/
+.idea/dataSources.local.xml
+.idea/httpRequests/

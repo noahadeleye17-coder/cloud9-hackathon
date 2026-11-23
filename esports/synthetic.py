@@ -108,6 +108,12 @@ class Generator:
                         opp_like *= 2.5
                     weights[cid] = (w * 0.6 + opp_like * 1.4) ** 2
                 champ = _weighted_choice(self.rng, weights)
+                if champ is None:  # ban list exhausted -> ban any champion the opponent could still pick
+                    champ = _weighted_choice(
+                        self.rng, {c.id: 1 for c in self.champs if c.id not in taken and c.id not in locked_for_opp}
+                    )
+                if champ is None:
+                    raise RuntimeError("No champions left to ban; load more champions before seeding.")
                 role = ""
             else:
                 unavailable = rules.unavailable_for(team.id, prior_picks, taken, mode)
@@ -130,6 +136,8 @@ class Generator:
                     champ = _weighted_choice(
                         self.rng, {c.id: 1 for c in self.champs if c.id not in unavailable}
                     )
+                if champ is None:
+                    raise RuntimeError("No champions left to pick; load more champions before seeding.")
                 filled[team.id].add(role)
             taken.add(champ)
             out.append((s.order, s.side, team, s.action, champ, role))

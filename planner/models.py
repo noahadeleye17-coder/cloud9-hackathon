@@ -7,6 +7,8 @@ from esports.models import FEARLESS_CHOICES, FORMAT_CHOICES, ROLE_CHOICES, SIDE_
 
 
 class DraftPlan(models.Model):
+    id: int  # auto primary key, declared for type checkers
+
     name = models.CharField(max_length=120)
     our_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="plans_as_us")
     opponent = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="plans_as_opponent")
@@ -38,6 +40,8 @@ class DraftPlan(models.Model):
 
 
 class PlannedGame(models.Model):
+    id: int  # auto primary key, declared for type checkers
+
     RESULT_CHOICES = [("", "Not played"), ("win", "Win"), ("loss", "Loss")]
 
     plan = models.ForeignKey(DraftPlan, on_delete=models.CASCADE, related_name="games")
@@ -69,6 +73,8 @@ class PlannedGame(models.Model):
 
 
 class PlannedAction(models.Model):
+    id: int  # auto primary key, declared for type checkers
+
     game = models.ForeignKey(PlannedGame, on_delete=models.CASCADE, related_name="actions")
     order = models.PositiveSmallIntegerField()
     champion = models.ForeignKey(Champion, on_delete=models.CASCADE, related_name="+")

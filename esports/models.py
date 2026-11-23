@@ -22,6 +22,8 @@ class DataSource(models.TextChoices):
 
 
 class Team(models.Model):
+    id: int  # auto primary key, declared for type checkers
+
     name = models.CharField(max_length=100)
     short_code = models.CharField(max_length=10, unique=True)
     region = models.CharField(max_length=30, blank=True)
@@ -35,6 +37,8 @@ class Team(models.Model):
 
 
 class Champion(models.Model):
+    id: int  # auto primary key, declared for type checkers
+
     key = models.CharField(max_length=40, unique=True, help_text="Data Dragon id, e.g. 'MonkeyKing'")
     name = models.CharField(max_length=60)
     roles = models.JSONField(default=list, blank=True, help_text="Lanes, most common first")
@@ -52,6 +56,8 @@ class Champion(models.Model):
 
 
 class Series(models.Model):
+    id: int  # auto primary key, declared for type checkers
+
     team_a = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="+")
     team_b = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="+")
     format = models.CharField(max_length=3, choices=FORMAT_CHOICES)
@@ -75,6 +81,8 @@ class Series(models.Model):
 
 
 class Game(models.Model):
+    id: int  # auto primary key, declared for type checkers
+
     series = models.ForeignKey(Series, on_delete=models.CASCADE, related_name="games")
     number = models.PositiveSmallIntegerField()
     blue_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="+")
@@ -101,6 +109,8 @@ class Game(models.Model):
 
 
 class DraftAction(models.Model):
+    id: int  # auto primary key, declared for type checkers
+
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="actions")
     order = models.PositiveSmallIntegerField(help_text="1..20, see draft_rules.DRAFT_ORDER")
     side = models.CharField(max_length=4, choices=SIDE_CHOICES)

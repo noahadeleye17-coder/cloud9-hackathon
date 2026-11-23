@@ -1,0 +1,16 @@
+<div>
+  <h3>{{ title }}</h3>
+  <p class="small muted">{{ help }}</p>
+  <table>
+    <tr><th>Champion</th><th class="num">G1</th><th class="num">G{{ ls.late_game }}+</th></tr>
+    {% for row in rows %}
+    <tr>
+      <td><span class="champ">{% include "planner/_champ.html" with c=row.champion %}{{ row.champion.name }}</span></td>
+      <td class="num">{{ row.early.count }}/{{ row.early.opportunities }}</td>
+      <td class="num">{{ row.late.count }}/{{ row.late.opportunities }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="3" class="muted">No clear shift (needs {{ ls.min_count }}+ {{ what }}).</td></tr>
+    {% endfor %}
+  </table>
+</div>

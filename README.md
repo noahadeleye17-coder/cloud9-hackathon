@@ -11,6 +11,7 @@ Coaches use it to **scout** an opponent's pick and ban habits. They then **plan 
   - Most-picked and most-banned champions, rated against the games where each champion was actually available (see Methodology).
   - First-pick habits on blue and red side, picks by role, and blue/red record.
   - How the opponent's picks change from Game 1 to Game 5 of a Fearless series.
+  - **Game 1 vs Game 3+ comparison** for Fearless series: late-series pocket picks, comfort picks they drop even while still available, late-series bans, first-phase role priority, and record early vs late.
   - Filters for patch and date range.
 - **Fearless series simulator**
   - The real 20-step pro draft order.
@@ -74,6 +75,8 @@ The ban rate is measured over games where the opponent could still pick the cham
 | Your pick | Your own comfort picks for roles you still need to fill, plus how much it denies the opponent. In Hard Fearless, taking a champion also locks it away from them for the rest of the series |
 | Their ban (predicted) | What they usually ban, plus your most-picked champions |
 | Their pick (predicted) | Their comfort picks for roles they still need to fill |
+
+**Game 1 vs Game 3+.** Game 1 is the full-pool baseline; Game 3+ is where Fearless lockouts bite (Game 2 is left out as a transition game). Both sides use the same opportunity rule, so a comfort pick that is simply locked out late is not reported as "dropped". Shifts are ranked by the smoothed rate, but a shift is only shown when the raw rates point the same way, so a 2-of-2 late sample can't look like a drop. Suggestions in Game 3+ boost a champion only when the opponent's late-series rate is higher than their overall rate.
 
 **Fearless variants:**
 

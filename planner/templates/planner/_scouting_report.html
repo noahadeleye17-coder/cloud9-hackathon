@@ -62,6 +62,34 @@
   </div>
 </div>
 
+{% with ls=report.late_series %}
+<div class="card" style="margin-top:16px">
+  <h2>Game 1 vs Game {{ ls.late_game }}+: how they adapt late in Fearless series</h2>
+  <p class="small muted">Counts are shown as picks / games where the champion was still available, so a comfort pick that is simply Fearless-locked late doesn't count as "dropped". Game 2 is left out as a transition game.</p>
+  {% if not ls.early.games or not ls.late.games %}
+    <p class="muted">Needs Fearless series that reached Game {{ ls.late_game }} ({{ ls.early.games }} Game 1s and {{ ls.late.games }} Game {{ ls.late_game }}+ games in this range).</p>
+  {% else %}
+  {% if ls.low_sample %}<div class="warnbox small" style="margin-bottom:12px">Small sample: {{ ls.early.games }} Game 1s and {{ ls.late.games }} Game {{ ls.late_game }}+ games. Read the counts, not just the ranking.</div>{% endif %}
+  <div class="grid cols-3" style="margin-bottom:12px">
+    <div class="card"><div class="stat">{{ ls.early.wins }}-{{ ls.early.losses }}</div><div class="muted">Game 1 record</div></div>
+    <div class="card"><div class="stat">{{ ls.late.wins }}-{{ ls.late.losses }}</div><div class="muted">Game {{ ls.late_game }}+ record</div></div>
+    <div class="card">
+      <h3>First-phase pick roles</h3>
+      <table>
+        <tr><th style="width:50px">G1</th><td>{% for r in ls.early.first_phase_roles %}<span class="tag">{{ r.role }} {{ r.share|pct }}</span> {% empty %}<span class="muted">-</span>{% endfor %}</td></tr>
+        <tr><th>G{{ ls.late_game }}+</th><td>{% for r in ls.late.first_phase_roles %}<span class="tag">{{ r.role }} {{ r.share|pct }}</span> {% empty %}<span class="muted">-</span>{% endfor %}</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="grid cols-3">
+    {% include "planner/_shift_table.html" with title="Late-series picks" help="Picked more often late, when available. Likely pocket picks." rows=ls.risers what="picks" %}
+    {% include "planner/_shift_table.html" with title="Dropped late" help="Picked often in Game 1 but passed over late even while still available." rows=ls.fallers what="picks" %}
+    {% include "planner/_shift_table.html" with title="Late-series bans" help="Banned more often late, when you could still pick it." rows=ls.ban_risers what="bans" %}
+  </div>
+  {% endif %}
+</div>
+{% endwith %}
+
 <div class="card" style="margin-top:16px">
   <h2>How their picks change through a Fearless series</h2>
   <p class="small muted">Top picks by game number. Late games often show pocket picks, once comfort champions are locked out. Watch the sample size (games).</p>

@@ -12,20 +12,14 @@ Turn types:
   their pick    -> predicted: their comfort picks for roles they still need
 """
 
-from collections import Counter
 from dataclasses import dataclass, field
 
 from esports import draft_rules as rules
-from esports.tendencies import Filters, TeamStats, compute_team_stats
+from esports.tendencies import LATE, LATE_GAME, Filters, TeamStats, compute_team_stats, smoothed
 
-PRIOR = 2.0
 DENY_WEIGHT = 0.6
 DENY_REASON_MIN_RATE = 0.25  # only call out denial when the opponent actually relies on the champ
-LATE_GAME = 3  # "late series" = Game 3+
-
-
-def smoothed(count, opportunities):
-    return count / (opportunities + PRIOR) if opportunities > 0 else 0.0
+LATE_BOOST_CAP = 1.5  # max multiplier for a champion the opponent leans on in Game 3+
 
 
 @dataclass
@@ -43,13 +37,21 @@ class Suggestion:
         }
 
 
-def _late_picks(stats: TeamStats):
-    games = sum(b["games"] for n, b in stats.by_game_number.items() if n >= LATE_GAME)
-    picks = Counter()
-    for n, b in stats.by_game_number.items():
-        if n >= LATE_GAME:
-            picks.update(b["picks"])
-    return games, picks
+def _late_boost(stats: TeamStats, cid, who):
+    """Multiplier and reason when a team picks a champion *more* in Fearless Game 3+ than overall.
+
+    Both rates are measured against availability, so a champion that is merely
+    still unlocked late doesn't get boosted.
+    """
+    late = stats.phases[LATE]
+    n, opp = late.picks[cid], late.pick_opportunities(cid)
+    if not n or not opp:
+        return 1.0, None
+    late_rate, overall = smoothed(n, opp), smoothed(stats.picks[cid], stats.pick_opportunities(cid))
+    if late_rate <= overall:
+        return 1.0, None
+    boost = min(LATE_BOOST_CAP, late_rate / overall) if overall else LATE_BOOST_CAP
+    return boost, f"{who} picked it in {n} of {opp} Fearless Game {LATE_GAME}+ games when available ({n / opp:.0%})"
 
 
 def _role_fit(champ, open_roles):
@@ -114,7 +116,6 @@ class SuggestionEngine:
         opp_id = self.plan.opponent_id
         open_roles = self.state.open_roles(opp_id)
         blocked = self.state.unavailable(opp_id)  # no point banning what they can't pick
-        late_games, late_picks = _late_picks(self.opp)
         is_late = self.state.game.number >= LATE_GAME
         opp_blue_first = self.state.game.team_id_on(rules.BLUE) == opp_id and self.state.next_step.order < 7
 
@@ -129,9 +130,10 @@ class SuggestionEngine:
                 reasons.append(
                     f"Their blue-side first pick in {self.opp.blue_first_pick[c.id]} of {self.opp.blue_games} blue games"
                 )
-            if is_late and late_picks[c.id]:
-                score *= 1.25
-                reasons.append(f"Picked {late_picks[c.id]}x across {late_games} Fearless Game {LATE_GAME}+ games")
+            if is_late:
+                boost, reason = _late_boost(self.opp, c.id, self.opp_name)
+                score *= boost
+                reasons.append(reason)
             fit = _role_fit(c, open_roles)
             score *= fit
             if fit == 1.0 and len(open_roles) < 5:
@@ -200,7 +202,6 @@ class SuggestionEngine:
         opp_id = self.plan.opponent_id
         open_roles = self.state.open_roles(opp_id)
         blocked = self.state.unavailable(opp_id)
-        late_games, late_picks = _late_picks(self.opp)
         is_late = self.state.game.number >= LATE_GAME
         out = []
         for c in self.state.champions:
@@ -210,9 +211,10 @@ class SuggestionEngine:
                 continue
             score = smoothed(self.opp.picks[c.id], self.opp.pick_opportunities(c.id))
             reasons = [_pick_reason(self.opp, c.id, self.opp_name)]
-            if is_late and late_picks[c.id]:
-                score *= 1.25
-                reasons.append(f"Picked {late_picks[c.id]}x across {late_games} Fearless Game {LATE_GAME}+ games")
+            if is_late:
+                boost, reason = _late_boost(self.opp, c.id, self.opp_name)
+                score *= boost
+                reasons.append(reason)
             roles = [r for r in c.roles if r in open_roles]
             if roles:
                 reasons.append(f"Fills {roles[0]} for them")

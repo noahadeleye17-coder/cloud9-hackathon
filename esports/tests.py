@@ -4,7 +4,7 @@ from django.test import SimpleTestCase, TestCase
 
 from . import draft_rules as rules
 from .models import Champion, DraftAction, Game, Series, Team
-from .tendencies import Filters, compute_team_stats, team_tendencies
+from .tendencies import Filters, _ranked_shifts, _shift_row, compute_team_stats, team_tendencies
 
 
 class DraftOrderTests(SimpleTestCase):
@@ -132,3 +132,56 @@ class TendencyTests(TestCase):
         self.assertTrue(report["picks"])
         self.assertIn("rate", report["picks"][0])
         self.assertEqual(set(report["by_role"]), set(rules.ROLES))
+
+    def test_late_series_shift_measures_against_availability(self):
+        """Game 1 vs Game 3+: risers, fallers and ban shifts use availability, not raw counts.
+
+        In every game Alpha is blue, so Alpha's first pick (step 7) is list index 6 and
+        Alpha's first ban (step 1) is index 0.
+        """
+        c = self.champs
+        for _ in range(2):  # series 1-2: Alpha first-picks c[6] in G1, c[26] in G3
+            s = self.series(format="bo5")
+            make_game(s, 1, self.a, self.b, self.b, c[0:20])
+            make_game(s, 3, self.a, self.b, self.a, c[20:40])
+        for _ in range(2):  # series 3-4: c[6] never shows up, so it's available and passed over
+            s = self.series(format="bo5")
+            make_game(s, 1, self.a, self.b, self.b, c[40:50] + c[10:20])
+            make_game(s, 3, self.a, self.b, self.a, c[20:40])
+
+        stats = compute_team_stats(self.a)
+        early, late = stats.phases["early"], stats.phases["late"]
+        self.assertEqual((early.games, late.games), (4, 4))
+        # c[6] is hard-locked in G3 of series 1-2, so only series 3-4 count as late opportunities.
+        self.assertEqual(early.picks[c[6].id], 2)
+        self.assertEqual(late.pick_opportunities(c[6].id), 2)
+
+        ls = team_tendencies(self.a)["late_series"]
+        name = lambda rows: [r["champion"]["name"] for r in rows]
+        self.assertEqual((ls["early"]["wins"], ls["early"]["losses"]), (0, 4))
+        self.assertEqual((ls["late"]["wins"], ls["late"]["losses"]), (4, 0))
+        self.assertIn(c[26].name, name(ls["risers"]))
+        riser = next(r for r in ls["risers"] if r["champion"]["name"] == c[26].name)
+        self.assertEqual(riser["early"], {"count": 0, "opportunities": 4})
+        self.assertEqual(riser["late"], {"count": 4, "opportunities": 4})
+        self.assertIn(c[6].name, name(ls["fallers"]))
+        self.assertIn(c[20].name, name(ls["ban_risers"]))  # Alpha's first ban in every G3
+        self.assertTrue(ls["low_sample"])
+
+    def test_non_fearless_series_excluded_from_late_series(self):
+        c = self.champs
+        s = self.series(format="bo5", fearless_mode=rules.FEARLESS_OFF)
+        make_game(s, 1, self.a, self.b, self.a, c[0:20])
+        make_game(s, 3, self.a, self.b, self.a, c[0:20])
+        stats = compute_team_stats(self.a)
+        self.assertEqual(stats.phases["early"].games + stats.phases["late"].games, 0)
+
+
+class ShiftRankingTests(SimpleTestCase):
+    def test_small_late_sample_at_full_rate_is_not_a_drop(self):
+        champ = Champion(id=1, key="Lux", name="Lux", roles=["mid"])
+        # 13 of 21 early (62%) vs 2 of 2 late (100%): smoothing alone says "down", raw rates say "up".
+        row = _shift_row(champ, 13, 21, 2, 2)
+        self.assertLess(row["shift"], 0)
+        self.assertEqual(_ranked_shifts([row], rising=False, top=5), [])
+        self.assertEqual(_ranked_shifts([row], rising=True, top=5), [])
